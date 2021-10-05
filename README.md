@@ -11,13 +11,13 @@ This code needs as input the following params:
 
 These commands can also be specified in a configuration file. Check [`src/main.cfg`](src/main.cfg).
 
-use the following command to run the code:
-> Using configuration file
+Use the following command to run the code:
+#### Using configuration file
 ```
 python main.py @main.cfg
 ```
 
-> Using commandline arguments
+#### Using commandline arguments
 ```
 python main --input_dir path/to/input_dir --layer_number 7 --variables_of_interest variable_name
 ```
