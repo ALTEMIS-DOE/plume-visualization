@@ -7,6 +7,8 @@ from pyprojroot import here
 root = here(project_files=[".here"])
 sys.path.append(str(root))
 
+from typing import List
+
 
 # Function to print list in a better compact way
 def lprint(list_data: List, ncols: int = 3, col_width: int = 40):

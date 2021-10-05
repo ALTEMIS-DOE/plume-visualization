@@ -171,7 +171,7 @@ def main():
 
         # Get the data from the input directory
         plot_mesh, plot_data = data.get_data(args.input_dir, verbose=False)
-        prism_coords = data.get_prism_coords(plot_mesh, plot_data)
+        prism_coords = data.get_prism_coords(plot_mesh)
 
         # Storing prism coordinates in a dataframe to efficiently extract layer
         coords_map_df = pd.DataFrame(prism_coords)
