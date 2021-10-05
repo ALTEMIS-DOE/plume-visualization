@@ -244,3 +244,4 @@ $RECYCLE.BIN/
 ### Custom gitignores ###
 simulation_runs/
 resources/
+.tmp
