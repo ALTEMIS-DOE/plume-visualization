@@ -3,6 +3,21 @@
 This tool is used to create a time-series 2D visualization of the a specified element.
 The 2D plot is of a single specified layer from the 3D mesh.
 
+## Setting up the environment (recommended)
+Although not mandatory, it is recommended to create a virtualenv to predict the outputs of the code.
+Use the provided `requirements.yml` file to create the virtual env.
+
+#### To create a new environment, use the following command.
+```
+conda env create -f requirements.yml
+```
+
+#### To update an existing environment, use the following command.
+```
+conda env update -f requirements.yml
+```
+
+
 ## How to run the code?
 This code needs as input the following params:
 - the directory containing the plot_mesh and plot_data files.
@@ -16,6 +31,7 @@ Use the following command to run the code:
 ```
 python main.py @main.cfg
 ```
+
 
 #### Using commandline arguments
 ```
