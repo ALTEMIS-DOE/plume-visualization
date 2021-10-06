@@ -17,6 +17,7 @@ import pandas as pd
 from tqdm import tqdm
 from pprint import pprint
 import matplotlib.pyplot as plt
+import xml.etree.ElementTree as et
 from joblib import Parallel, delayed
 
 import src.utils as utils
@@ -111,35 +112,55 @@ def get_layer_info(
     layer_i_vals.to_csv(f"{temp_out_dir}/{cycle_i.strip('ic').rjust(10,'0')}.csv")
 
 
-def create_gif(input_dir: str, layer_number: int) -> None:
+def create_gif(
+    csv_input_dir: str, layer_number: int, root_input_dir: str = None
+) -> None:
     """Creates GIF using the frames for each cycle.
 
     Args:
-        input_dir (str): The directory containing the CSV files for each frame. 
+        csv_input_dir (str): The directory containing the CSV files for each frame. 
             The CSV files contain the x,y,z coordinates along with the variable information.
         layer_number (int): The layer of interest. Only used for the plot title.
+        root_input_dir (str): The root directory containing all the mesh and data files. 
+            The files here are only used to extract the year for each cycle.
     """
 
     # Getting the CSV paths for each frame. Sorting them to have the correct order of cycles.
     csvs = [
-        os.path.join(input_dir, f)
-        for f in os.listdir(input_dir)
+        os.path.join(csv_input_dir, f)
+        for f in os.listdir(csv_input_dir)
         if f.split(".")[-1] == "csv"
     ]
     csvs.sort()
 
     # Creating a subfunction to parallelize the plotting process.
     def plot_n_save(csv_path):
-        # TODO: Fix the varaible concentration limits to avoid random color shifts.
-        # TODO: Display year instead of cycles.
+        year = "????"
+        cycle = os.path.basename(csv_path).split(".")[0].strip("0")
+
+        # Extracting the year for this cycle
+        if root_input_dir is not None:
+            xmf_path = os.path.join(root_input_dir, f"plot_data.h5.{cycle}.xmf")
+            if not os.path.exists(xmf_path):
+                xmf_path = xmf_path.replace(".xmf", "ic.xmf")
+
+            if os.path.exists(xmf_path):
+                tree = et.parse(xmf_path)
+                year = round(float(tree.getroot()[0][0][2].attrib["Value"]))
+
+        # Creating the plots
         cycle_df = pd.read_csv(csv_path)
         plt.figure()
-        plt.title(f"cycle: {os.path.basename(csv_path).split('.')[0].strip('0')}")
+        plt.title(
+            f"Year: {year: >5}             Cycle: {os.path.basename(csv_path).split('.')[0].strip('0'): >6}"
+        )
         plt.scatter(
             cycle_df.x,
             cycle_df.y,
             c=cycle_df["total_component_concentration.cell.Tritium conc"],
             cmap="Blues",
+            vmin=0,
+            vmax=2e-9,
         )
         plt.colorbar()
         plt.savefig(csv_path.replace(".csv", ".png"))
@@ -200,7 +221,11 @@ def main():
         )
 
     # create GIF using frames for each cycle
-    create_gif(input_dir=temp_out_dir, layer_number=args.layer_number)
+    create_gif(
+        csv_input_dir=temp_out_dir,
+        layer_number=args.layer_number,
+        root_input_dir=args.input_dir,
+    )
 
     return
 
