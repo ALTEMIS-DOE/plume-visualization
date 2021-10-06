@@ -113,7 +113,7 @@ def get_layer_info(
 
 
 def create_gif(
-    csv_input_dir: str, layer_number: int, root_input_dir: str = None
+    csv_input_dir: str, layer_number: int, fps: int=5, root_input_dir: str = None
 ) -> None:
     """Creates GIF using the frames for each cycle.
 
@@ -121,6 +121,7 @@ def create_gif(
         csv_input_dir (str): The directory containing the CSV files for each frame. 
             The CSV files contain the x,y,z coordinates along with the variable information.
         layer_number (int): The layer of interest. Only used for the plot title.
+        fps (int): Frames per second for the resulting GIF.
         root_input_dir (str): The root directory containing all the mesh and data files. 
             The files here are only used to extract the year for each cycle.
     """
@@ -170,7 +171,7 @@ def create_gif(
 
     # Use all the frames for each cycle to create the gif
     # TODO: Have an option to control the frame interval in the gif
-    with imageio.get_writer(f"layer_{layer_number}_cycles.gif", mode="I") as writer:
+    with imageio.get_writer(f"layer_{layer_number}_cycles.gif", mode="I", fps=fps) as writer:
         with tqdm(csvs) as tqdm_csvs:
             tqdm_csvs.set_description("Generating GIF")
 
@@ -186,7 +187,7 @@ def main():
     # Used to store intermediate output files. Aids parallel computation.
     temp_out_dir = ".tmp"
 
-    # Only to be used while debugging to save time one generating CSVs.
+    # Only to be used while debugging to save time on generating CSVs.
     gen_csv = True
     if gen_csv:
 
@@ -224,6 +225,7 @@ def main():
     create_gif(
         csv_input_dir=temp_out_dir,
         layer_number=args.layer_number,
+        fps=3,
         root_input_dir=args.input_dir,
     )
 
