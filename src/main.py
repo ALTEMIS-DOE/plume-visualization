@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from pprint import pprint
+from pygifsicle import optimize
 import matplotlib.pyplot as plt
 import xml.etree.ElementTree as et
 from joblib import Parallel, delayed
@@ -109,7 +110,7 @@ def get_layer_info(
 
     # Write the extracted information to csv
     os.makedirs(temp_out_dir, exist_ok=True)
-    layer_i_vals.to_csv(f"{temp_out_dir}/{cycle_i.strip('ic').rjust(10,'0')}.csv")
+    layer_i_vals.to_csv(f"{temp_out_dir}/{cycle_i.rstrip('ic').rjust(10,'0')}.csv")
 
 
 def create_gif(
@@ -121,9 +122,9 @@ def create_gif(
         csv_input_dir (str): The directory containing the CSV files for each frame. 
             The CSV files contain the x,y,z coordinates along with the variable information.
         layer_number (int): The layer of interest. Only used for the plot title.
-        fps (int): Frames per second for the resulting GIF.
-        root_input_dir (str): The root directory containing all the mesh and data files. 
-            The files here are only used to extract the year for each cycle.
+        fps (int): Frames per second for the resulting GIF. Defaults to 1.
+        root_input_dir (str, optional): The root directory containing all the mesh and data files. 
+            The files here are only used to extract the year for each cycle. Defaults to None.
     """
 
     # Getting the CSV paths for each frame. Sorting them to have the correct order of cycles.
@@ -137,7 +138,7 @@ def create_gif(
     # Creating a subfunction to parallelize the plotting process.
     def plot_n_save(csv_path):
         year = "????"
-        cycle = os.path.basename(csv_path).split(".")[0].strip("0")
+        cycle = os.path.basename(csv_path).split(".")[0].lstrip("0")
 
         # Extracting the year for this cycle
         if root_input_dir is not None:
@@ -153,7 +154,7 @@ def create_gif(
         cycle_df = pd.read_csv(csv_path)
         plt.figure()
         plt.title(
-            f"Year: {year: >5}             Cycle: {os.path.basename(csv_path).split('.')[0].strip('0'): >6}"
+            f"Year: {year: >5}             Cycle: {os.path.basename(csv_path).split('.')[0].lstrip('0'): >6}"
         )
         plt.scatter(
             cycle_df.x,
@@ -170,14 +171,24 @@ def create_gif(
     parallel_function(delayed(plot_n_save)(csv_path=csv) for csv in csvs)
 
     # Use all the frames for each cycle to create the gif
-    # TODO: Have an option to control the frame interval in the gif
-    with imageio.get_writer(f"layer_{layer_number}_cycles.gif", mode="I", fps=fps) as writer:
+    gif_output_path = f"layer_{layer_number}_cycles.gif"
+    with imageio.get_writer(gif_output_path, mode="I", fps=fps) as writer:
         with tqdm(csvs) as tqdm_csvs:
             tqdm_csvs.set_description("Generating GIF")
 
             for csv in tqdm_csvs:
                 cycle_frame = imageio.imread(csv.replace(".csv", ".png"))
                 writer.append_data(cycle_frame)
+    
+    # Using this function to regulate the size of the output GIF file.
+    try:
+        optimize(gif_output_path)
+    except ValueError as ve:
+        # raises this exception if the input file path is incorrect.
+        raise ve
+    except FileNotFoundError as fnfe:
+        # mostly raises this exception if the gifsicle package is not installed.
+        print("Ignoring GIF file optimization because required package is not found...")
 
 
 def main():
