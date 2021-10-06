@@ -1,0 +1,5 @@
+name: lbl_amanzi
+channels:
+  - defaults
+pip:
+  - -r requirements_pip.txt
