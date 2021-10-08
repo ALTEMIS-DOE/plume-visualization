@@ -69,6 +69,29 @@ def parse_arguments() -> argparse.Namespace:
     return args
 
 
+def get_year_for_cycle(plot_data_path: str, cycle_i: int) -> str:
+    """Get the year for the specified cycle.
+    
+    Args:
+        plot_data_path (str): Path to the plot_data.h5 file.
+        
+    
+    """
+    
+    year = "????"
+    
+    if plot_data_path is not None:
+        xmf_path = f"{plot_data_path}.{cycle_i}.xmf"
+        if not os.path.exists(xmf_path):
+            xmf_path = xmf_path.replace(".xmf", "ic.xmf")
+            
+        if os.path.exists(xmf_path):
+            tree = et.parse(xmf_path)
+            year = round(float(tree.getroot()[0][0][2].attrib["Value"]))
+            
+    return year
+
+
 def get_layer_info(
     plot_data_path: str,
     temp_out_dir: str,
@@ -107,14 +130,20 @@ def get_layer_info(
 
     # extract variable values only for layer_i
     layer_i_vals = groupby_obj.apply(lambda x: x.iloc[layer_i])
-
-    # Write the extracted information to csv
+    
+    # extracting the year for this cycle
+    year_i = get_year_for_cycle(plot_data_path, cycle_i)
+    
+    # Write the extracted information to csv with the filename format being: YEARy_00000CYCLE.csv
     os.makedirs(temp_out_dir, exist_ok=True)
-    layer_i_vals.to_csv(f"{temp_out_dir}/{cycle_i.rstrip('ic').rjust(10,'0')}.csv")
+    layer_i_vals.to_csv(f"{temp_out_dir}/{year_i}y_{cycle_i.rstrip('ic').rjust(10,'0')}.csv")
 
 
 def create_gif(
-    csv_input_dir: str, layer_number: int, fps: int=5, root_input_dir: str = None
+    csv_input_dir: str, 
+    layer_number: int, 
+    fps: int=5, 
+#     root_input_dir: str = None
 ) -> None:
     """Creates GIF using the frames for each cycle.
 
@@ -133,28 +162,22 @@ def create_gif(
         for f in os.listdir(csv_input_dir)
         if f.split(".")[-1] == "csv"
     ]
-    csvs.sort()
+    
+    # Sort the csv files using only the cycle count and not the year included in the filename.
+    csvs.sort(key=lambda x: x.split("y_")[-1])
 
     # Creating a subfunction to parallelize the plotting process.
     def plot_n_save(csv_path):
-        year = "????"
-        cycle = os.path.basename(csv_path).split(".")[0].lstrip("0")
-
-        # Extracting the year for this cycle
-        if root_input_dir is not None:
-            xmf_path = os.path.join(root_input_dir, f"plot_data.h5.{cycle}.xmf")
-            if not os.path.exists(xmf_path):
-                xmf_path = xmf_path.replace(".xmf", "ic.xmf")
-
-            if os.path.exists(xmf_path):
-                tree = et.parse(xmf_path)
-                year = round(float(tree.getroot()[0][0][2].attrib["Value"]))
-
+        csv_filename = os.path.basename(csv_path)
+        year_n_cycle = csv_filename.split("y_")
+        year = year_n_cycle[0]
+        cycle = year_n_cycle[1].split(".")[0].lstrip("0")
+        
         # Creating the plots
         cycle_df = pd.read_csv(csv_path)
         plt.figure()
         plt.title(
-            f"Year: {year: >5}             Cycle: {os.path.basename(csv_path).split('.')[0].lstrip('0'): >6}"
+            f"Year: {year: >5}             Cycle: {cycle: >6}"
         )
         plt.scatter(
             cycle_df.x,
@@ -195,7 +218,7 @@ def main():
     # Get the command-line arguments
     args = parse_arguments()
 
-    # Used to store intermediate output files. Aids parallel computation.
+    # Used to store intermediate output files. Aids parallel computation. # TODO: Add as an argparser.
     temp_out_dir = ".tmp"
 
     # Only to be used while debugging to save time on generating CSVs.
@@ -237,7 +260,7 @@ def main():
         csv_input_dir=temp_out_dir,
         layer_number=args.layer_number,
         fps=3,
-        root_input_dir=args.input_dir,
+#         root_input_dir=args.input_dir,
     )
 
     return
