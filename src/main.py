@@ -60,6 +60,13 @@ def parse_arguments() -> argparse.Namespace:
         nargs="*",
         help="List of variables that are to be visualized.",
     )
+    
+    parser.add_argument(
+        "--gif_fps",
+        type=int,
+        default=5,
+        help="Frames per second for the output GIF.",
+    )
 
     args, unknown = parser.parse_known_args()
 
@@ -74,8 +81,10 @@ def get_year_for_cycle(plot_data_path: str, cycle_i: int) -> str:
     
     Args:
         plot_data_path (str): Path to the plot_data.h5 file.
+        cycle_i (int): Cycle number.
         
-    
+    Returns:
+        str: Returns year in string format. Deafults to "????".
     """
     
     year = "????"
@@ -143,7 +152,6 @@ def create_gif(
     csv_input_dir: str, 
     layer_number: int, 
     fps: int=5, 
-#     root_input_dir: str = None
 ) -> None:
     """Creates GIF using the frames for each cycle.
 
@@ -151,9 +159,7 @@ def create_gif(
         csv_input_dir (str): The directory containing the CSV files for each frame. 
             The CSV files contain the x,y,z coordinates along with the variable information.
         layer_number (int): The layer of interest. Only used for the plot title.
-        fps (int): Frames per second for the resulting GIF. Defaults to 1.
-        root_input_dir (str, optional): The root directory containing all the mesh and data files. 
-            The files here are only used to extract the year for each cycle. Defaults to None.
+        fps (int): Frames per second for the resulting GIF. Defaults to 5.
     """
 
     # Getting the CSV paths for each frame. Sorting them to have the correct order of cycles.
@@ -259,8 +265,7 @@ def main():
     create_gif(
         csv_input_dir=temp_out_dir,
         layer_number=args.layer_number,
-        fps=3,
-#         root_input_dir=args.input_dir,
+        fps=args.gif_fps,
     )
 
     return
