@@ -37,3 +37,6 @@ python main.py @main.cfg
 ```
 python main --input_dir path/to/input_dir --layer_number 7 --variables_of_interest variable_name
 ```
+
+## Sample GIF using a sample simulation output dataset
+![Layer 7 GIF](layer_7_cycles.gif)
