@@ -245,6 +245,5 @@ $RECYCLE.BIN/
 simulation_runs/
 resources/
 .tmp
-*.gif
 *.png
 *.csv
