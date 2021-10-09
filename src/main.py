@@ -67,6 +67,13 @@ def parse_arguments() -> argparse.Namespace:
         default=5,
         help="Frames per second for the output GIF.",
     )
+    
+    parser.add_argument(
+        "--temp_out_dir",
+        type=str,
+        default=".tmp",
+        help="Relative or absolute path to the temporary directory that stores the intermediate output files such as CSVs and PNGs.",
+    )
 
     args, unknown = parser.parse_known_args()
 
@@ -149,29 +156,32 @@ def get_layer_info(
 
 
 def create_gif(
-    csv_input_dir: str, 
+    io_dir: str, 
     layer_number: int, 
     fps: int=5, 
 ) -> None:
     """Creates GIF using the frames for each cycle.
 
     Args:
-        csv_input_dir (str): The directory containing the CSV files for each frame. 
+        io_dir (str): The directory containing the CSV files for each frame. 
             The CSV files contain the x,y,z coordinates along with the variable information.
         layer_number (int): The layer of interest. Only used for the plot title.
         fps (int): Frames per second for the resulting GIF. Defaults to 5.
     """
-
+    csv_input_dir = os.path.join(io_dir, "csvs")
+    png_output_dir = os.path.join(io_dir, "pngs")
+    
     # Getting the CSV paths for each frame. Sorting them to have the correct order of cycles.
     csvs = [
         os.path.join(csv_input_dir, f)
         for f in os.listdir(csv_input_dir)
         if f.split(".")[-1] == "csv"
     ]
-    
-    # Sort the csv files using only the cycle count and not the year included in the filename.
-    csvs.sort(key=lambda x: x.split("y_")[-1])
 
+    #################
+    # Creating PNGs #
+    #################
+    
     # Creating a subfunction to parallelize the plotting process.
     def plot_n_save(csv_path):
         csv_filename = os.path.basename(csv_path)
@@ -194,19 +204,38 @@ def create_gif(
             vmax=2e-9,
         )
         plt.colorbar()
-        plt.savefig(csv_path.replace(".csv", ".png"))
+        
+        # Saving the plot
+        os.makedirs(png_output_dir, exist_ok=True)
+        png_path = os.path.join(png_output_dir, csv_filename.replace(".csv", ".png"))
+        plt.savefig(png_path)
+    # ^^ End of sub-function
 
     # Save individual frames for each cycle
     parallel_function(delayed(plot_n_save)(csv_path=csv) for csv in csvs)
 
+    ################
+    # Creating GIF #
+    ################
+    
     # Use all the frames for each cycle to create the gif
     gif_output_path = f"layer_{layer_number}_cycles.gif"
+    
+    pngs = [
+        os.path.join(png_output_dir, f)
+        for f in os.listdir(png_output_dir)
+        if f.split(".")[-1] == "png"
+    ]
+    
+    # Sort the pngs files using only the cycle count and not the year included in the filename.
+    pngs.sort(key=lambda x: x.split("y_")[-1])
+    
     with imageio.get_writer(gif_output_path, mode="I", fps=fps) as writer:
-        with tqdm(csvs) as tqdm_csvs:
-            tqdm_csvs.set_description("Generating GIF")
+        with tqdm(pngs) as tqdm_pngs:
+            tqdm_pngs.set_description("Generating GIF from PNGs")
 
-            for csv in tqdm_csvs:
-                cycle_frame = imageio.imread(csv.replace(".csv", ".png"))
+            for png in tqdm_pngs:
+                cycle_frame = imageio.imread(png)
                 writer.append_data(cycle_frame)
     
     # Using this function to regulate the size of the output GIF file.
@@ -224,8 +253,9 @@ def main():
     # Get the command-line arguments
     args = parse_arguments()
 
-    # Used to store intermediate output files. Aids parallel computation. # TODO: Add as an argparser.
-    temp_out_dir = ".tmp"
+#     # Used to store intermediate output files. Aids parallel computation. # TODO: Add as an argparser.
+#     temp_out_dir = ".tmp"
+    csvs_dir = os.path.join(args.temp_out_dir, "csvs")
 
     # Only to be used while debugging to save time on generating CSVs.
     gen_csv = True
@@ -251,7 +281,7 @@ def main():
         parallel_function(
             delayed(get_layer_info)(
                 plot_data_path=plot_data_path,
-                temp_out_dir=temp_out_dir,
+                temp_out_dir=csvs_dir,
                 shape_coords=coords_map_df,
                 variable_i=variable_i,
                 cycle_i=cycle_i,
@@ -263,7 +293,7 @@ def main():
 
     # create GIF using frames for each cycle
     create_gif(
-        csv_input_dir=temp_out_dir,
+        io_dir=args.temp_out_dir,
         layer_number=args.layer_number,
         fps=args.gif_fps,
     )
