@@ -25,6 +25,7 @@ import src.utils as utils
 import src.data as data
 
 parallel_function = Parallel(n_jobs=-1, verbose=5)
+MAX_LAYERS = 17
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -49,8 +50,8 @@ def parse_arguments() -> argparse.Namespace:
         "--layer_number",
         type=int,
         default=None,
-        choices=range(1, 18),
-        help="The layer number to visualize.",
+#         choices=range(1, 18),
+        help="The layer number to visualize. The layer is counted from the surface.",
     )
 
     parser.add_argument(
@@ -73,6 +74,12 @@ def parse_arguments() -> argparse.Namespace:
         type=str,
         default=".tmp",
         help="Relative or absolute path to the temporary directory that stores the intermediate output files such as CSVs and PNGs.",
+    )
+    
+    parser.add_argument(
+        "--have_csvs",
+        action="store_true",
+        help="Boolean flag to mark if existing CSVs are to be used. In this case the temp_out_dir will be used as input to generate the GIF.",
     )
 
     args, unknown = parser.parse_known_args()
@@ -138,14 +145,17 @@ def get_layer_info(
     plot_data = h5py.File(plot_data_path, "r")
 
     # extracting the specified frame for the current cycle
-    shape_coords[variable_i] = np.squeeze(plot_data[variable_i][cycle_i])
+    try:
+        shape_coords[variable_i] = np.squeeze(plot_data[variable_i][cycle_i])
+    except KeyError as ke:
+        shape_coords[variable_i] = np.squeeze(plot_data[variable_i][f"{cycle_i}ic"])
 
     # for computational efficiency it is better to pass this as an argument
     if groupby_obj is None:
         groupby_obj = shape_coords.groupby(["x", "y"])
 
     # extract variable values only for layer_i
-    layer_i_vals = groupby_obj.apply(lambda x: x.iloc[layer_i])
+    layer_i_vals = groupby_obj.apply(lambda x: x.iloc[MAX_LAYERS - layer_i])
     
     # extracting the year for this cycle
     year_i = get_year_for_cycle(plot_data_path, cycle_i)
@@ -158,6 +168,7 @@ def get_layer_info(
 def create_gif(
     io_dir: str, 
     layer_number: int, 
+    variable_name: str,
     fps: int=5, 
 ) -> None:
     """Creates GIF using the frames for each cycle.
@@ -166,6 +177,7 @@ def create_gif(
         io_dir (str): The directory containing the CSV files for each frame. 
             The CSV files contain the x,y,z coordinates along with the variable information.
         layer_number (int): The layer of interest. Only used for the plot title.
+        variable_name (str): The variable of interest. Used for plotting the scientific variable values.
         fps (int): Frames per second for the resulting GIF. Defaults to 5.
     """
     csv_input_dir = os.path.join(io_dir, "csvs")
@@ -198,7 +210,7 @@ def create_gif(
         plt.scatter(
             cycle_df.x,
             cycle_df.y,
-            c=cycle_df["total_component_concentration.cell.Tritium conc"],
+            c=cycle_df[variable_name],
             cmap="Blues",
             vmin=0,
             vmax=2e-9,
@@ -253,13 +265,14 @@ def main():
     # Get the command-line arguments
     args = parse_arguments()
 
-#     # Used to store intermediate output files. Aids parallel computation. # TODO: Add as an argparser.
-#     temp_out_dir = ".tmp"
+    # Used to store intermediate output files. Aids parallel computation.
     csvs_dir = os.path.join(args.temp_out_dir, "csvs")
 
-    # Only to be used while debugging to save time on generating CSVs.
-    gen_csv = True
-    if gen_csv:
+    # working with only one variable of interest right now.
+    variable_i = args.variables_of_interest[0]
+    
+    # While debugging or exploring the data, computation time can be saved on generating CSVs.
+    if not args.have_csvs:
 
         # Get the data from the input directory
         plot_mesh, plot_data = data.get_data(args.input_dir, verbose=False)
@@ -269,9 +282,6 @@ def main():
         coords_map_df = pd.DataFrame(prism_coords)
         coords_map_df.columns = "x", "y", "z"
         coords_map_groupby_layer = coords_map_df.groupby(["x", "y"])
-
-        # working with only one variable of interest right now.
-        variable_i = args.variables_of_interest[0]
 
         # preparing inputs for the get_layer_info function.
         cycles = data.get_cycles(plot_data)
@@ -290,11 +300,14 @@ def main():
             )
             for cycle_i in cycles
         )
+    
+    print("CSVs ready for plot.")
 
     # create GIF using frames for each cycle
     create_gif(
         io_dir=args.temp_out_dir,
         layer_number=args.layer_number,
+        variable_name=variable_i,
         fps=args.gif_fps,
     )
 
