@@ -20,9 +20,11 @@ conda env update -f requirements.yml
 
 ## How to run the code?
 This code needs as input the following params:
-- the directory containing the plot_mesh and plot_data files.
-- the layer of interest
-- the variable/element of interest
+- `--input_dir`: the directory containing the plot_mesh and plot_data files.
+- `--layer_number`: the layer of interest.
+- `--variables_of_interest`: the variable/element of interest. Currently this only supports a single variable, but in the later versions it will support multiple variables of interest.
+- `--gif_fps`: frames per second for creating the output GIF.
+- `--temp_out_dir`: temporary output directory where all the intermediate output files are stored.
 
 These commands can also be specified in a configuration file. Check [`src/main.cfg`](src/main.cfg).
 
@@ -39,6 +41,7 @@ python main --input_dir path/to/input_dir --layer_number 7 --variables_of_intere
 ```
 
 ## Sample GIF using a sample simulation output dataset
+This sample plots tritium concentrations at layer 7 from the surface.
 ![Layer 7 GIF](layer_7_cycles.gif)
 
 
