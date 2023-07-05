@@ -213,7 +213,8 @@ def create_gif(
             c=cycle_df[variable_name],
             cmap="Blues",
             vmin=0,
-            vmax=2e-9,
+            vmax=2e-9,    # NOTE: this range is specific to tritium conc.
+            # vmax=1,    # NOTE: this range is specific to saturation_liquid.
         )
         plt.colorbar()
         
